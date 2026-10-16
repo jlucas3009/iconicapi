@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API TMS WebCOL – Envio de Ocorrências</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #222; }
+
+    header {
+      background: #c0390b;
+      color: #fff;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    header .logo {
+      width: 42px; height: 42px;
+      background: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 20px; color: #c0390b;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    header p  { font-size: .8rem; opacity: .85; }
+
+    .container { max-width: 860px; margin: 32px auto; padding: 0 16px 60px; }
+
+    /* ---- cards ---- */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #c0390b;
+      color: #fff;
+      padding: 12px 20px;
+      font-weight: 600;
+      font-size: .95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-header .step {
+      background: rgba(255,255,255,.25);
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; font-weight: 700;
+    }
+    .card-body { padding: 22px 20px; }
+
+    /* ---- grid forms ---- */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .full    { grid-column: 1 / -1; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    label  { font-size: .78rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .4px; }
+    input, select, textarea {
+      border: 1.5px solid #ddd;
+      border-radius: 6px;
+      padding: 9px 11px;
+      font-size: .9rem;
+      color: #222;
+      outline: none;
+      transition: border-color .2s;
+      background: #fff;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #c0390b; }
+    input[readonly] { background: #f7f7f7; color: #777; cursor: default; }
+    textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+
+    /* ---- status badge ---- */
+    .token-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: .8rem;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+    .token-status.ok   { background: #e6f9ed; color: #1a7a3b; }
+    .token-status.fail { background: #fdecea; color: #b71c1c; }
+    .token-status.idle { background: #f0f0f0; color: #777; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    /* ---- occurrence pills ---- */
+    .occ-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+    .occ-pill  {
+      display: flex; align-items: center; gap: 8px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: all .2s;
+      font-size: .88rem;
+      user-select: none;
+    }
+    .occ-pill input[type=radio] { display: none; }
+    .occ-pill .code {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #c0390b;
+      min-width: 24px;
+      text-align: center;
+    }
+    .occ-pill .desc { color: #444; }
+    .occ-pill:hover   { border-color: #c0390b; background: #fff5f3; }
+    .occ-pill.selected { border-color: #c0390b; background: #fdecea; }
+
+    /* ---- button ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 24px;
+      border: none;
+      border-radius: 7px;
+      font-size: .92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: #c0390b; color: #fff; }
+    .btn-primary:hover { background: #a33009; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-outline { background: #fff; color: #c0390b; border: 2px solid #c0390b; }
+    .btn-outline:hover { background: #fff5f3; }
+
+    /* ---- response box ---- */
+    .response-box {
+      display: none;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      font-size: .85rem;
+    }
+    .response-box.success { background: #e6f9ed; border: 1.5px solid #52c97a; color: #1a7a3b; }
+    .response-box.error   { background: #fdecea; border: 1.5px solid #e57373; color: #b71c1c; }
+    .response-box pre     { white-space: pre-wrap; font-family: monospace; margin-top: 8px; font-size: .82rem; }
+
+    /* ---- spinner ---- */
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- divider ---- */
+    .divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+
+    /* ---- CT-e upload ---- */
+    .cte-drop {
+      border: 2px dashed #ddd;
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: #fafafa;
+      position: relative;
+    }
+    .cte-drop:hover, .cte-drop.drag  { border-color: #c0390b; background: #fff5f3; }
+    .cte-drop input[type=file]        { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%; }
+    .cte-drop .drop-icon              { font-size: 2rem; margin-bottom: 6px; }
+    .cte-drop p                       { font-size: .85rem; color: #888; margin: 0; }
+    .cte-drop strong                  { color: #c0390b; }
+    .cte-result {
+      display: none;
+      margin-top: 12px;
+      background: #f0faf4;
+      border: 1.5px solid #52c97a;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: .82rem;
+      color: #1a7a3b;
+    }
+    .cte-result.warn { background: #fffbe6; border-color: #f0b429; color: #7a5900; }
+
+    /* ---- log ---- */
+    #log-list { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+    #log-list li {
+      background: #f7f7f7;
+      border-left: 4px solid #ddd;
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: .82rem;
+    }
+    #log-list li.ok   { border-color: #52c97a; background: #f0faf4; }
+    #log-list li.err  { border-color: #e57373; background: #fff5f5; }
+    #log-list li .log-time  { font-weight: 600; color: #888; font-size: .75rem; }
+    #log-list li .log-body  { margin-top: 3px; color: #333; word-break: break-all; }
+
+    /* ---- abas ---- */
+    .tabs-nav {
+      display: flex;
+      gap: 4px;
+      padding: 0 32px;
+      background: #a82e09;
+    }
+    .tab-btn {
+      padding: 10px 22px;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,.7);
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all .18s;
+    }
+    .tab-btn:hover  { color: #fff; }
+    .tab-btn.active { color: #fff; border-bottom-color: #fff; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---- tabela histórico ---- */
+    .hist-toolbar {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      align-items: center; margin-bottom: 16px;
+    }
+    .hist-toolbar input {
+      flex: 1; min-width: 180px;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      padding: 8px 11px; font-size: .88rem;
+    }
+    .hist-toolbar select {
+      border: 1.5px solid #ddd; border-radius: 6px;
+      padding: 8px 11px; font-size: .88rem;
+    }
+    .hist-table-wrap { overflow-x: auto; }
+    table.hist {
+      width: 100%; border-collapse: collapse;
+      font-size: .82rem;
+    }
+    table.hist th {
+      background: #f0f0f0; padding: 9px 12px;
+      text-align: left; font-size: .75rem;
+      text-transform: uppercase; letter-spacing: .4px;
+      color: #555; white-space: nowrap;
+    }
+    table.hist td {
+      padding: 9px 12px; border-bottom: 1px solid #f0f0f0;
+      vertical-align: top; word-break: break-all;
+    }
+    table.hist tr:hover td { background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 10px; font-size: .75rem; font-weight: 700;
+    }
+    .badge-ok  { background: #e6f9ed; color: #1a7a3b; }
+    .badge-err { background: #fdecea; color: #b71c1c; }
+    .badge-occ { background: #fff0eb; color: #c0390b; }
+    .hist-empty { text-align:center; color:#aaa; padding:40px; font-size:.9rem; }
+
+    @media (max-width: 600px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .full { grid-column: 1; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="logo">S</div>
+  <div>
+    <h1>API TMS WebCOL – Ocorrências</h1>
+    <p>Envio manual de ocorrências de viagem</p>
+  </div>
+</header>
+
+<nav class="tabs-nav">
+  <button class="tab-btn active" onclick="mudarAba('envio')">Envio de Ocorrências</button>
+  <button class="tab-btn" onclick="mudarAba('historico')">Histórico de Envios</button>
+</nav>
+
+<div class="container">
+  <div id="tab-envio" class="tab-panel active">
+
+  <!-- credenciais ocultas -->
+  <input type="hidden" id="auth-email" value="integracaopitassi@hotmail.com">
+  <input type="hidden" id="auth-senha" value="uXw5208EOYDQ7YZ">
+  <input type="hidden" id="token-display">
+
+  <!-- STEP 1.5: CT-e UPLOAD -->
+  <div class="card">
+    <div class="card-header">
+      <span class="step">📎</span> Importar CT-e XML <span style="font-weight:400;font-size:.8rem;opacity:.8;">(preenche os campos automaticamente)</span>
+    </div>
+    <div class="card-body">
+      <div class="cte-drop" id="cte-drop"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="onCteDrop(event)">
+        <input type="file" accept=".xml,text/xml,application/xml" multiple onchange="processarCtes(this.files)">
+        <div class="drop-icon">📄</div>
+        <p><strong>Clique aqui</strong> ou arraste um ou mais arquivos CT-e XML</p>
+        <p style="margin-top:4px;">Extrai automaticamente todas as chaves NF de cada CT-e</p>
+      </div>
+      <div class="cte-result" id="cte-result"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: DADOS DA OCORRÊNCIA -->
+  <div class="card">
+    <div class="card-header">
+      <span class="step">2</span> Dados da Ocorrência
+    </div>
+    <div class="card-body">
+
+      <!-- Ocorrência -->
+      <div class="field" style="margin-bottom:18px;">
+        <label>Tipo de Ocorrência *</label>
+        <div class="occ-group" id="occ-group">
+          <label class="occ-pill" onclick="selecionarOcorrencia(this, '00')">
+            <input type="checkbox" value="00">
+            <span class="code">00</span>
+            <span class="desc">Nota em Trânsito</span>
+          </label>
+          <label class="occ-pill" onclick="selecionarOcorrencia(this, 'FINALIZACAO')" style="border-color:#1a7a3b;">
+            <input type="checkbox" value="FINALIZACAO">
+            <span class="code" style="color:#1a7a3b;">✓</span>
+            <span class="desc" style="font-weight:700;">
+              Finalização
+              <span style="display:block;font-size:.75rem;font-weight:400;color:#555;">Iconic → 98+01 &nbsp;|&nbsp; Outros → 52</span>
+            </span>
+          </label>
+        </div>
+        <div id="aviso-finalizacao" style="display:none;margin-top:8px;font-size:.8rem;background:#fffbe6;border:1.5px solid #f0b429;border-radius:6px;padding:8px 12px;color:#7a5900;">
+          ⚠️ Para usar Finalização importe os CT-e XML acima — o sistema precisa saber o destinatário de cada NF.
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Lista de NFs -->
+      <div class="field" style="margin-bottom:14px;">
+        <label style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Chaves NF * <span id="nf-counter" style="font-weight:400;color:#888;">(1 NF)</span></span>
+          <span style="display:flex;gap:8px;">
+            <button class="btn btn-outline" onclick="colarNFs()" style="font-size:.75rem;padding:5px 10px;">
+              Colar lista
+            </button>
+            <button class="btn btn-outline" onclick="adicionarNF()" style="font-size:.75rem;padding:5px 10px;">
+              + Adicionar NF
+            </button>
+          </span>
+        </label>
+        <div id="nf-list" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+          <!-- linhas inseridas por JS -->
+        </div>
+        <p style="font-size:.75rem;color:#999;margin-top:6px;">
+          Máx. 100 NFs por envio. "Colar lista" aceita uma chave por linha.
+        </p>
+      </div>
+
+      <!-- Placa e CNPJ -->
+      <div class="grid-2" style="margin-bottom:14px;">
+        <div class="field">
+          <label>Placa do Veículo *</label>
+          <input type="text" id="placa_veiculo" placeholder="EX: ABC1D23" maxlength="8"
+                 oninput="this.value = this.value.toUpperCase()">
+        </div>
+        <input type="hidden" id="cnpj_transportadora" value="13648760000151">
+      </div>
+
+      <!-- Localização manual -->
+      <div class="field full" style="margin-bottom:10px;">
+        <label>Selecionar cidade rápida</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;" id="cidades-rapidas">
+          <!-- gerado por JS -->
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-bottom:14px;">
+        <div class="field full">
+          <label>Localização (descrição textual) *</label>
+          <input type="text" id="localizacao" placeholder="Ex: Vilhena – RO, saída para Porto Velho">
+        </div>
+        <div class="field">
+          <label>Latitude</label>
+          <input type="text" id="latitude" placeholder="-22.5638...">
+        </div>
+        <div class="field">
+          <label>Longitude</label>
+          <input type="text" id="longitude" placeholder="-44.1690...">
+        </div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:6px;">
+            <span>📍</span>
+            <span>Usar localização do GPS</span>
+          </label>
+          <button class="btn btn-outline" onclick="obterGPS()" style="font-size:.82rem;padding:8px 12px;">
+            Capturar GPS
+          </button>
+        </div>
+      </div>
+
+      <!-- Datas -->
+      <div class="grid-2">
+        <div class="field">
+          <label>Previsão de Entrega *</label>
+          <input type="date" id="previsao_entrega">
+        </div>
+        <div class="field">
+          <label>Data/Hora da Ocorrência *</label>
+          <input type="datetime-local" id="data_geolocalizacao">
+        </div>
+      </div>
+
+      <!-- Data de entrega — só aparece na ocorrência 01 -->
+      <div id="campo-data-entrega" style="display:none; margin-top:14px;
+           background:#fff5f3; border:2px solid #c0390b; border-radius:8px; padding:14px 16px;">
+        <div class="field">
+          <label style="color:#c0390b;">📦 Data/Hora de Entrega * <span style="font-weight:400;">(obrigatório para ocorrência 01)</span></label>
+          <input type="datetime-local" id="data_entrega"
+                 style="border-color:#c0390b; max-width:320px;">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- STEP 3: ENVIO -->
+  <div class="card">
+    <div class="card-header">
+      <span class="step">3</span> Enviar Ocorrência
+    </div>
+    <div class="card-body">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" id="btn-enviar" onclick="enviarOcorrencia()">
+          <span class="spinner" id="spin-envio"></span>
+          Enviar para API
+        </button>
+        <button class="btn btn-outline" onclick="limparFormulario()">Limpar</button>
+      </div>
+
+      <div class="response-box" id="response-box">
+        <strong id="response-titulo"></strong>
+        <pre id="response-body"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4: COMPROVANTE -->
+  <div class="card">
+    <div class="card-header">
+      <span class="step">4</span> Enviar Comprovante de Entrega (Canhoto)
+    </div>
+    <div class="card-body">
+
+      <!-- 4a: Importar CT-e XML -->
+      <p style="font-size:.82rem;font-weight:600;color:#555;margin-bottom:8px;">① Importe os CT-e XML para montar a lista de NFs:</p>
+      <div class="cte-drop" id="cte-drop-canhoto"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="onCteDropCanhoto(event)">
+        <input type="file" accept=".xml,text/xml,application/xml" multiple onchange="processarCtesCanhoto(this.files)">
+        <div class="drop-icon">📄</div>
+        <p><strong>Clique aqui</strong> ou arraste CT-e XML</p>
+      </div>
+      <div class="cte-result" id="cte-result-canhoto" style="display:none;margin-top:8px;margin-bottom:4px;"></div>
+
+      <!-- Modal para ampliar imagem -->
+      <div id="modal-imagem" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+        <button style="position:absolute;top:20px;right:30px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;line-height:1;" onclick="fecharModalImagem()">✕</button>
+        <img id="modal-imagem-src" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:8px;">
+        <p style="color:#fff;font-size:.9rem;text-align:center;">Pressione <strong>ESC</strong> ou clique no <strong>X</strong> pra fechar</p>
+      </div>
+
+      <!-- Modal para selecionar ocorrências na Finalização -->
+      <div id="modal-ocorrencias" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;max-width:400px;box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+          <h3 style="margin:0 0 16px;font-size:1.1rem;color:#222;">📋 Selecione as ocorrências a enviar</h3>
+          <p style="font-size:.85rem;color:#666;margin-bottom:16px;">Desmarque as ocorrências que você NÃO quer enviar:</p>
+
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px;border-radius:6px;border:1.5px solid #ddd;transition:all .2s;">
+              <input type="checkbox" id="check-oc-98" checked style="cursor:pointer;width:18px;height:18px;">
+              <span style="flex:1;">
+                <strong>98 – Aguardando Descarga</strong>
+                <br><span style="font-size:.75rem;color:#888;" id="data-oc-98"></span>
+              </span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px;border-radius:6px;border:1.5px solid #ddd;transition:all .2s;">
+              <input type="checkbox" id="check-oc-52" checked style="cursor:pointer;width:18px;height:18px;">
+              <span style="flex:1;">
+                <strong>52 – Redespacho</strong>
+                <br><span style="font-size:.75rem;color:#888;" id="data-oc-52"></span>
+              </span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px;border-radius:6px;border:1.5px solid #ddd;transition:all .2s;">
+              <input type="checkbox" id="check-oc-01" checked style="cursor:pointer;width:18px;height:18px;">
+              <span style="flex:1;">
+                <strong>01 – Entregue</strong>
+                <br><span style="font-size:.75rem;color:#888;" id="data-oc-01"></span>
+              </span>
+            </label>
+          </div>
+
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" onclick="enviarOcorrenciaSelecionadas()" style="flex:1;margin:0;">Enviar</button>
+            <button class="btn btn-outline" onclick="fecharModalOcorrencias()" style="flex:1;margin:0;">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de NFs -->
+      <div id="canhoto-tabela-wrap" style="display:none;margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <p style="font-size:.82rem;font-weight:600;color:#555;">② Jogue as fotos aqui — o sistema identifica e aloca automaticamente:</p>
+          <span id="canhoto-counter" style="font-size:.78rem;color:#888;"></span>
+        </div>
+
+        <!-- Zona de fotos em lote -->
+        <div id="fotos-drop"
+             style="border:2px dashed #1a7a3b;border-radius:10px;padding:20px;text-align:center;cursor:pointer;background:#f0faf4;margin-bottom:16px;position:relative;transition:all .2s;"
+             ondragover="event.preventDefault();this.style.background='#d4f5e2'"
+             ondragleave="this.style.background='#f0faf4'"
+             ondrop="onFotosDrop(event)">
+          <input type="file" accept="image/*,application/pdf" multiple
+                 style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;"
+                 onchange="processarFotos(this.files)">
+          <div style="font-size:1.8rem;margin-bottom:4px;">🖼️</div>
+          <p style="font-size:.85rem;color:#1a7a3b;margin:0;"><strong>Arraste várias fotos aqui</strong> ou clique para selecionar</p>
+          <p style="font-size:.78rem;color:#888;margin:4px 0 0;">O Claude lê cada foto e identifica a NF automaticamente</p>
+        </div>
+
+        <!-- Fotos não identificadas -->
+        <div id="fotos-sem-match" style="display:none;margin-bottom:12px;background:#fffbe6;border:1.5px solid #f0b429;border-radius:8px;padding:10px 14px;">
+          <p style="font-size:.8rem;font-weight:600;color:#7a5900;margin-bottom:6px;">⚠️ Fotos não identificadas — <span style="font-weight:400;">arraste a miniatura para a linha da NF na tabela, ou use 📎 para selecionar manualmente:</span></p>
+          <div id="fotos-sem-match-lista" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        </div>
+
+        <!-- Tabela NFs -->
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+            <thead>
+              <tr style="background:#f0f0f0;">
+                <th style="padding:8px 10px;text-align:left;font-size:.75rem;color:#555;text-transform:uppercase;">NF</th>
+                <th style="padding:8px 10px;text-align:left;font-size:.75rem;color:#555;text-transform:uppercase;">Chave</th>
+                <th style="padding:8px 10px;text-align:left;font-size:.75rem;color:#555;text-transform:uppercase;">Destinatário</th>
+                <th style="padding:8px 10px;text-align:center;font-size:.75rem;color:#555;text-transform:uppercase;">Foto</th>
+                <th style="padding:8px 10px;text-align:center;font-size:.75rem;color:#555;text-transform:uppercase;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="canhoto-tbody"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btn-canhoto" onclick="enviarTodosCanhotos()">
+            <span class="spinner" id="spin-canhoto"></span>
+            Enviar Comprovantes
+          </button>
+          <button class="btn btn-outline" onclick="limparCanhoto()" style="font-size:.82rem;">Limpar tudo</button>
+        </div>
+      </div>
+
+      <div id="canhoto-progresso" style="display:none;margin-top:14px;"></div>
+      <div class="response-box" id="canhoto-response-box">
+        <strong id="canhoto-response-titulo"></strong>
+        <pre id="canhoto-response-body"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG SESSÃO -->
+  <div class="card">
+    <div class="card-header" style="justify-content:space-between;">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="step">📋</span> Log da Sessão
+      </span>
+      <button class="btn btn-outline" onclick="limparLog()"
+              style="font-size:.75rem;padding:4px 10px;color:#fff;border-color:rgba(255,255,255,.5);background:transparent;">
+        Limpar log
+      </button>
+    </div>
+    <div class="card-body">
+      <ul id="log-list">
+        <li style="color:#aaa;border-left-color:#ddd;">Nenhum envio realizado ainda.</li>
+      </ul>
+    </div>
+  </div>
+
+  </div><!-- /tab-envio -->
+
+  <!-- ABA HISTÓRICO -->
+  <div id="tab-historico" class="tab-panel">
+    <div class="card" style="margin-top:24px;">
+      <div class="card-header" style="justify-content:space-between;">
+        <span>📊 Histórico Completo de Envios</span>
+        <button class="btn btn-outline" onclick="exportarCSV()"
+                style="font-size:.75rem;padding:4px 12px;color:#fff;border-color:rgba(255,255,255,.5);background:transparent;">
+          Exportar CSV
+        </button>
+      </div>
+      <div class="card-body">
+
+        <div class="hist-toolbar">
+          <input type="text" id="hist-busca" placeholder="Buscar por NF, placa, localização..."
+                 oninput="renderTabela()">
+          <select id="hist-occ" onchange="renderTabela()">
+            <option value="">Todas as ocorrências</option>
+            <option value="0">00 – Nota em Trânsito</option>
+            <option value="52">52 – Redespacho</option>
+            <option value="98">98 – Aguardando Descarga</option>
+            <option value="1">01 – Entregue</option>
+          </select>
+          <select id="hist-status" onchange="renderTabela()">
+            <option value="">Todos os status</option>
+            <option value="ok">Sucesso</option>
+            <option value="erro">Erro</option>
+          </select>
+          <button class="btn btn-outline" onclick="limparHistorico()"
+                  style="font-size:.8rem;padding:7px 14px;color:#c0390b;">
+            Limpar histórico
+          </button>
+        </div>
+
+        <div class="hist-table-wrap">
+          <table class="hist">
+            <thead>
+              <tr>
+                <th>Chave NF</th>
+                <th>Placa</th>
+                <th style="background:#fff0eb;">00<br><span style="font-weight:400;font-size:.7rem;">Trânsito</span></th>
+                <th style="background:#fff0eb;">52<br><span style="font-weight:400;font-size:.7rem;">Redespacho</span></th>
+                <th style="background:#fff0eb;">98<br><span style="font-weight:400;font-size:.7rem;">Ag. Descarga</span></th>
+                <th style="background:#fff0eb;">01<br><span style="font-weight:400;font-size:.7rem;">Entregue</span></th>
+                <th>Última Localização</th>
+              </tr>
+            </thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
+          <div id="hist-empty" class="hist-empty" style="display:none;">
+            Nenhum registro encontrado.
+          </div>
+        </div>
+
+        <p id="hist-count" style="margin-top:12px;font-size:.78rem;color:#aaa;"></p>
+      </div>
+    </div>
+  </div><!-- /tab-historico -->
+
+</div>
+
+<script>
+  // ---- Estado global ----
+  let token = '';
+  let ocorrenciasSelecionadas = [];
+  let nfCount = 0;
+  const mapaDestinatarios = {}; // chave_nf → nome destinatário
+
+  // ---- Inicializa ----
+  (async function() {
+    const agora = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('data_geolocalizacao').value =
+      `${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+    document.getElementById('previsao_entrega').value = agora.toISOString().split('T')[0];
+    adicionarNF();
+    // Login automático
+    await fazerLogin();
+  })();
+
+  // ---- Gerenciamento de NFs ----
+  function adicionarNF(valor) {
+    if (nfCount >= 100) { alert('Máximo de 100 NFs por envio.'); return; }
+    nfCount++;
+    const id = 'nf_' + Date.now() + '_' + nfCount;
+    const div = document.createElement('div');
+    div.id = id;
+    div.style.cssText = 'display:flex;gap:6px;align-items:center;';
+    div.innerHTML = `
+      <span style="font-size:.75rem;color:#aaa;min-width:28px;text-align:right;">${nfCount}</span>
+      <input type="text" maxlength="44" placeholder="44 dígitos da chave NF-e"
+             style="flex:1;font-family:monospace;font-size:.85rem;letter-spacing:.5px;"
+             oninput="validarCampoNF(this)" value="${valor || ''}">
+      <button onclick="removerNF('${id}')" title="Remover"
+              style="border:none;background:none;color:#ccc;font-size:1.1rem;cursor:pointer;padding:4px 6px;border-radius:4px;line-height:1;"
+              onmouseover="this.style.color='#c0390b'" onmouseout="this.style.color='#ccc'">✕</button>`;
+    document.getElementById('nf-list').appendChild(div);
+    atualizarContador();
+  }
+
+  function removerNF(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+    renumerarNFs();
+  }
+
+  function renumerarNFs() {
+    const items = document.querySelectorAll('#nf-list > div');
+    nfCount = items.length;
+    items.forEach((div, i) => {
+      div.querySelector('span').textContent = i + 1;
+    });
+    atualizarContador();
+  }
+
+  function atualizarContador() {
+    const total = document.querySelectorAll('#nf-list > div').length;
+    nfCount = total;
+    document.getElementById('nf-counter').textContent =
+      `(${total} NF${total !== 1 ? 's' : ''})`;
+  }
+
+  function validarCampoNF(input) {
+    const v = input.value.replace(/\D/g,'');
+    input.value = v;
+    input.style.borderColor = (v.length === 0 || v.length === 44) ? '' : '#e57373';
+  }
+
+  function obterChavesNF() {
+    const inputs = document.querySelectorAll('#nf-list input[type=text]');
+    return Array.from(inputs).map(i => i.value.trim().replace(/\D/g,'')).filter(v => v.length > 0);
+  }
+
+  // ---- Colar lista de NFs ----
+  function colarNFs() {
+    const texto = prompt('Cole as chaves NF abaixo (uma por linha):');
+    if (!texto) return;
+    const chaves = texto.split(/\r?\n/)
+      .map(l => l.trim().replace(/\D/g,''))
+      .filter(l => l.length > 0);
+    if (chaves.length === 0) { alert('Nenhuma chave encontrada.'); return; }
+    if (chaves.length > 100) { alert(`Limite é 100 NFs. Foram detectadas ${chaves.length} — apenas as primeiras 100 serão carregadas.`); }
+
+    // Limpa lista atual e popula
+    document.getElementById('nf-list').innerHTML = '';
+    nfCount = 0;
+    const invalidas = [];
+    chaves.slice(0, 100).forEach(ch => {
+      adicionarNF(ch);
+      if (ch.length !== 44) invalidas.push(ch.slice(0,10) + '…');
+    });
+    if (invalidas.length) {
+      alert(`Atenção: ${invalidas.length} chave(s) não têm 44 dígitos e estão marcadas em vermelho.`);
+      // Marca visualmente
+      document.querySelectorAll('#nf-list input').forEach(inp => {
+        if (inp.value.length !== 44) inp.style.borderColor = '#e57373';
+      });
+    }
+  }
+
+  // ---- Seleciona ocorrência (multi) ----
+  function selecionarOcorrencia(el, codigo) {
+    const cb = el.querySelector('input[type=checkbox]');
+    if (cb.checked) {
+      el.classList.add('selected');
+      if (codigo === 'FINALIZACAO') el.style.borderColor = '#1a7a3b';
+      if (!ocorrenciasSelecionadas.includes(codigo)) ocorrenciasSelecionadas.push(codigo);
+    } else {
+      el.classList.remove('selected');
+      if (codigo === 'FINALIZACAO') el.style.borderColor = '#1a7a3b';
+      ocorrenciasSelecionadas = ocorrenciasSelecionadas.filter(c => c !== codigo);
+    }
+    // Aviso finalização sem XML
+    const avisoFin = document.getElementById('aviso-finalizacao');
+    if (ocorrenciasSelecionadas.includes('FINALIZACAO') && Object.keys(mapaDestinatarios).length === 0) {
+      avisoFin.style.display = '';
+    } else {
+      avisoFin.style.display = 'none';
+    }
+    // Mostra campo data de entrega se finalização selecionada (pode enviar 01)
+    document.getElementById('campo-data-entrega').style.display =
+      ocorrenciasSelecionadas.includes('FINALIZACAO') ? '' : 'none';
+  }
+
+  // ---- Login ----
+  async function fazerLogin() {
+    const email = document.getElementById('auth-email').value.trim();
+    const senha = document.getElementById('auth-senha').value;
+    if (!email || !senha) return;
+    try {
+      const res = await fetch('https://base.iconic.webcol.systems/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: senha })
+      });
+      const data = await res.json();
+      if (data.token) {
+        token = data.token;
+      }
+    } catch(e) { /* silencioso; as renovações de token durante envio também tentam */ }
+  }
+
+  // ---- Cidades rápidas ----
+  const CIDADES = [
+    { nome: 'Fortaleza',       local: 'FORTALEZA / CE',       lat: '-3.865647',  lng: '-38.514761' },
+    { nome: 'Olinda',          local: 'OLINDA / PE',           lat: '-8.007187',  lng: '-34.876161' },
+    { nome: 'Teresina',        local: 'TERESINA / PI',         lat: '-5.177340',  lng: '-42.793328' },
+    { nome: 'Salvador',        local: 'SALVADOR / BA',         lat: '-12.906739', lng: '-38.465977' },
+    { nome: 'Benevides',       local: 'BENEVIDES / PA',        lat: '-1.323795',  lng: '-48.228764' },
+    { nome: 'Duque de Caxias', local: 'DUQUE DE CAXIAS / RJ', lat: '-22.623746', lng: '-43.292947' },
+  ];
+
+  (function renderCidades() {
+    const container = document.getElementById('cidades-rapidas');
+    CIDADES.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-outline';
+      btn.style.cssText = 'font-size:.8rem;padding:6px 14px;';
+      btn.textContent = '📍 ' + c.nome;
+      btn.onclick = () => selecionarCidade(c);
+      container.appendChild(btn);
+    });
+  })();
+
+  let cidadeAtiva = null;
+  function selecionarCidade(c) {
+    document.getElementById('latitude').value  = c.lat;
+    document.getElementById('longitude').value = c.lng;
+    document.getElementById('localizacao').value = c.local;
+    // Destaca botão selecionado
+    document.querySelectorAll('#cidades-rapidas .btn').forEach(b => {
+      b.style.background = '';
+      b.style.color = '';
+    });
+    event.target.style.background = '#c0390b';
+    event.target.style.color = '#fff';
+    cidadeAtiva = c.nome;
+  }
+
+  // ---- GPS ----
+  function obterGPS() {
+    if (!navigator.geolocation) { alert('Geolocalização não suportada.'); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('latitude').value  = pos.coords.latitude.toFixed(10);
+      document.getElementById('longitude').value = pos.coords.longitude.toFixed(10);
+    }, () => alert('Não foi possível obter GPS. Preencha manualmente.'));
+  }
+
+  // ---- Variáveis globais para modal de ocorrências ----
+  let ocorrenciasParaEnviar = [];
+  let dadosEnvioAtual = null;
+
+  function abrirModalOcorrencias(ocorrencias) {
+    ocorrenciasParaEnviar = ocorrencias;
+    const modal = document.getElementById('modal-ocorrencias');
+    modal.style.display = 'flex';
+
+    // Mostra as datas de cada ocorrência
+    document.getElementById('check-oc-98').checked = ocorrencias.some(o => o.codigo === '98');
+    document.getElementById('check-oc-52').checked = ocorrencias.some(o => o.codigo === '52');
+    document.getElementById('check-oc-01').checked = ocorrencias.some(o => o.codigo === '01');
+
+    // Preenche as datas
+    const oc98 = ocorrencias.find(o => o.codigo === '98');
+    const oc52 = ocorrencias.find(o => o.codigo === '52');
+    const oc01 = ocorrencias.find(o => o.codigo === '01');
+
+    document.getElementById('data-oc-98').textContent = oc98 ? `${oc98.chaves.length} NF(s)` : '—';
+    document.getElementById('data-oc-52').textContent = oc52 ? `${oc52.chaves.length} NF(s)` : '—';
+    document.getElementById('data-oc-01').textContent = oc01 ? `${oc01.chaves.length} NF(s)` : '—';
+  }
+
+  function fecharModalOcorrencias() {
+    document.getElementById('modal-ocorrencias').style.display = 'none';
+    ocorrenciasParaEnviar = [];
+  }
+
+  async function enviarOcorrenciaSelecionadas() {
+    const ocs98 = document.getElementById('check-oc-98').checked;
+    const ocs52 = document.getElementById('check-oc-52').checked;
+    const ocs01 = document.getElementById('check-oc-01').checked;
+
+    // Filtra apenas as que foram marcadas
+    const ocorrenciasFlitradas = ocorrenciasParaEnviar.filter(o => {
+      if (o.codigo === '98') return ocs98;
+      if (o.codigo === '52') return ocs52;
+      if (o.codigo === '01') return ocs01;
+      return false;
+    });
+
+    if (ocorrenciasFlitradas.length === 0) {
+      alert('Nenhuma ocorrência selecionada.');
+      return;
+    }
+
+    fecharModalOcorrencias();
+    setBtnLoading('btn-enviar', 'spin-envio', true);
+
+    // Continua com o envio das ocorrências selecionadas
+    await enviarOcorrenciasFiltrando(ocorrenciasFlitradas, dadosEnvioAtual);
+  }
+
+  async function enviarOcorrenciasFiltrando(ocorrenciasOrdenadas, dados) {
+    const { localizacao, latitude, longitude, placa_veiculo, cnpj_transportadora, previsao_entrega, data_geolocalizacao, data_entrega } = dados;
+    const todosResultados = [];
+
+    try {
+      // Renova token
+      try {
+        const email = document.getElementById('auth-email').value.trim();
+        const senha = document.getElementById('auth-senha').value;
+        if (email && senha) {
+          const loginRes = await fetch('https://base.iconic.webcol.systems/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: senha })
+          });
+          const loginData = await loginRes.json();
+          if (loginData.token) {
+            token = loginData.token;
+          }
+        }
+      } catch(e) { /* continua */ }
+
+      // Envia cada ocorrência
+      for (const etapa of ocorrenciasOrdenadas) {
+        const codigo = etapa.codigo;
+        const chavesEtapa = etapa.chaves;
+        const geolocations = chavesEtapa.map(chave_nf => ({
+          chave_nf,
+          localizacao,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          placa_veiculo,
+          cnpj_transportadora,
+          previsao_entrega,
+          ocorrencia: parseInt(codigo),
+          data_entrega: codigo === '01' ? data_entrega : null,
+          data_geolocalizacao
+        }));
+
+        const lotes = [];
+        for (let i = 0; i < geolocations.length; i += 100) lotes.push(geolocations.slice(i, i+100));
+
+        const resultados = [];
+        for (const lote of lotes) {
+          const res = await fetch('https://geolocation.iconic.webcol.systems/invoice-geolocations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ geolocations: lote })
+          });
+          const texto = await res.text();
+          let json;
+          try { json = JSON.parse(texto); }
+          catch { json = { _raw: texto }; }
+          json._httpStatus = res.status;
+          resultados.push(json);
+          if (lotes.length > 1) await new Promise(r => setTimeout(r, 300));
+        }
+
+        const totalErros = resultados.reduce((acc, r) => acc + (r.errors?.length || r.erros?.length || 0), 0);
+        const sucesso = resultados.every(r => r._httpStatus === 200) && totalErros === 0;
+        const resumo = lotes.length > 1
+          ? { lotes_enviados: lotes.length, total_nfs: chavesEtapa.length, resultados }
+          : resultados[0];
+
+        todosResultados.push({ codigo, sucesso, resumo, totalErros });
+        adicionarLog(sucesso, codigo, localizacao, chavesEtapa, totalErros, resumo);
+        gravarEnvio(sucesso, codigo, localizacao, chavesEtapa, totalErros, resumo);
+
+        if (ocorrenciasOrdenadas.indexOf(etapa) < ocorrenciasOrdenadas.length - 1) {
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+
+      const totalNFsEnviadas = [...new Set(ocorrenciasOrdenadas.flatMap(e => e.chaves))].length;
+      mostrarRespostaMulti(todosResultados, totalNFsEnviadas);
+    } catch(e) {
+      const msg = (e.name || '') + ': ' + (e.message || String(e));
+      console.error('Erro no envio:', e);
+      const box = document.getElementById('response-box');
+      box.className = 'response-box error';
+      box.style.display = '';
+      document.getElementById('response-titulo').textContent = '✗ Erro inesperado';
+      document.getElementById('response-body').textContent = msg;
+    } finally {
+      setBtnLoading('btn-enviar', 'spin-envio', false);
+    }
+  }
+
+  // ---- Envio ----
+  async function enviarOcorrencia() {
+    if (!token) { alert('Faça o login primeiro (Passo 1).'); return; }
+    if (ocorrenciasSelecionadas.length === 0) { alert('Selecione ao menos um tipo de ocorrência.'); return; }
+
+    const chaves = obterChavesNF();
+    if (chaves.length === 0) { alert('Adicione ao menos uma Chave NF.'); return; }
+    const invalidas = chaves.filter(c => c.length !== 44);
+    if (invalidas.length) { alert(`${invalidas.length} chave(s) não têm 44 dígitos. Corrija antes de enviar.`); return; }
+
+    const localizacao         = document.getElementById('localizacao').value.trim();
+    const latitude            = document.getElementById('latitude').value.trim();
+    const longitude           = document.getElementById('longitude').value.trim();
+    const placa_veiculo       = document.getElementById('placa_veiculo').value.trim();
+    const cnpj_transportadora = document.getElementById('cnpj_transportadora').value.trim().replace(/\D/g,'');
+    const previsao_entrega    = document.getElementById('previsao_entrega').value;
+    const data_geo_raw        = document.getElementById('data_geolocalizacao').value;
+    const data_entrega_raw    = document.getElementById('data_entrega').value;
+
+    if (!localizacao)                                              { alert('Preencha a localização.'); return; }
+    if (!placa_veiculo)                                            { alert('Preencha a placa do veículo.'); return; }
+    if (!cnpj_transportadora || cnpj_transportadora.length !== 14){ alert('CNPJ inválido.'); return; }
+    if (!previsao_entrega)                                         { alert('Preencha a previsão de entrega.'); return; }
+    if (!data_geo_raw)                                             { alert('Preencha a data/hora da ocorrência.'); return; }
+    if (ocorrenciasSelecionadas.includes('01') && !data_entrega_raw) { alert('Data de entrega obrigatória para ocorrência 01.'); return; }
+
+    const data_geolocalizacao = data_geo_raw.replace('T',' ') + ':00';
+    const data_entrega = data_entrega_raw ? data_entrega_raw.replace('T',' ') + ':00' : null;
+
+    setBtnLoading('btn-enviar', 'spin-envio', true);
+
+    // Renova token antes de enviar
+    try {
+      const email = document.getElementById('auth-email').value.trim();
+      const senha = document.getElementById('auth-senha').value;
+      if (email && senha) {
+        const loginRes = await fetch('https://base.iconic.webcol.systems/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: senha })
+        });
+        const loginData = await loginRes.json();
+        if (loginData.token) {
+          token = loginData.token;
+          document.getElementById('token-display').value = token.substring(0,40) + '…';
+          setTokenStatus('ok', '✓ Autenticado');
+        }
+      }
+    } catch(e) { /* continua com token existente */ }
+
+    // Expande FINALIZACAO em grupos por destinatário
+    let ocorrenciasOrdenadas = [];
+    if (ocorrenciasSelecionadas.includes('00')) ocorrenciasOrdenadas.push({ tipo: 'simples', codigo: '00', chaves });
+
+    if (ocorrenciasSelecionadas.includes('FINALIZACAO')) {
+      const iconic = chaves.filter(c => (mapaDestinatarios[c] || '').toLowerCase().includes('iconic'));
+      const outros = chaves.filter(c => !(mapaDestinatarios[c] || '').toLowerCase().includes('iconic'));
+      if (iconic.length) {
+        ocorrenciasOrdenadas.push({ tipo: 'simples', codigo: '98', chaves: iconic });
+        ocorrenciasOrdenadas.push({ tipo: 'simples', codigo: '01', chaves: iconic });
+      }
+      if (outros.length) {
+        ocorrenciasOrdenadas.push({ tipo: 'simples', codigo: '52', chaves: outros });
+      }
+      if (iconic.length === 0 && outros.length === 0) {
+        alert('Nenhuma NF encontrada. Importe os CT-e XML antes de usar Finalização.');
+        setBtnLoading('btn-enviar', 'spin-envio', false);
+        return;
+      }
+
+      // Se tem FINALIZACAO, mostra modal para selecionar quais enviar
+      setBtnLoading('btn-enviar', 'spin-envio', false);
+      dadosEnvioAtual = {
+        localizacao, latitude, longitude, placa_veiculo, cnpj_transportadora,
+        previsao_entrega, data_geolocalizacao, data_entrega
+      };
+      abrirModalOcorrencias(ocorrenciasOrdenadas);
+      return;
+    }
+
+    const todosResultados = []; // { codigo, sucesso, resumo, totalErros }
+
+    try {
+      for (const etapa of ocorrenciasOrdenadas) {
+        const codigo = etapa.codigo;
+        const chavesEtapa = etapa.chaves;
+        const geolocations = chavesEtapa.map(chave_nf => ({
+          chave_nf,
+          localizacao,
+          latitude:  latitude  || null,
+          longitude: longitude || null,
+          placa_veiculo,
+          cnpj_transportadora,
+          previsao_entrega,
+          ocorrencia: parseInt(codigo),
+          data_entrega: codigo === '01' ? data_entrega : null,
+          data_geolocalizacao
+        }));
+
+        const lotes = [];
+        for (let i = 0; i < geolocations.length; i += 100) lotes.push(geolocations.slice(i, i+100));
+
+        const resultados = [];
+        for (const lote of lotes) {
+          const res = await fetch('https://geolocation.iconic.webcol.systems/invoice-geolocations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ geolocations: lote })
+          });
+          const texto = await res.text();
+          let json;
+          try { json = JSON.parse(texto); }
+          catch { json = { _raw: texto }; }
+          json._httpStatus = res.status;
+          resultados.push(json);
+          if (lotes.length > 1) await new Promise(r => setTimeout(r, 300));
+        }
+
+        const totalErros = resultados.reduce((acc, r) => acc + (r.errors?.length || r.erros?.length || 0), 0);
+        const sucesso = resultados.every(r => r._httpStatus === 200) && totalErros === 0;
+        const resumo = lotes.length > 1
+          ? { lotes_enviados: lotes.length, total_nfs: chavesEtapa.length, resultados }
+          : resultados[0];
+
+        todosResultados.push({ codigo, sucesso, resumo, totalErros });
+        adicionarLog(sucesso, codigo, localizacao, chavesEtapa, totalErros, resumo);
+        gravarEnvio(sucesso, codigo, localizacao, chavesEtapa, totalErros, resumo);
+
+        // Pausa entre ocorrências diferentes
+        if (ocorrenciasOrdenadas.indexOf(etapa) < ocorrenciasOrdenadas.length - 1) {
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+
+      const totalNFsEnviadas = [...new Set(ocorrenciasOrdenadas.flatMap(e => e.chaves))].length;
+      mostrarRespostaMulti(todosResultados, totalNFsEnviadas);
+    } catch(e) {
+      const msg = (e.name || '') + ': ' + (e.message || String(e));
+      console.error('Erro no envio:', e);
+      const box = document.getElementById('response-box');
+      box.className = 'response-box error';
+      box.style.display = '';
+      document.getElementById('response-titulo').textContent = '✗ Erro inesperado';
+      document.getElementById('response-body').textContent = msg;
+    } finally {
+      setBtnLoading('btn-enviar', 'spin-envio', false);
+    }
+  }
+
+  function mostrarRespostaMulti(todosResultados, totalNFs) {
+    const box = document.getElementById('response-box');
+    const tudoOk = todosResultados.every(r => r.sucesso);
+    box.className = 'response-box ' + (tudoOk ? 'success' : 'error');
+    box.style.display = '';
+
+    if (todosResultados.length === 1) {
+      const { codigo, sucesso, resumo, totalErros } = todosResultados[0];
+      const titulo = sucesso
+        ? `✓ Ocorrência ${codigo} — ${totalNFs} NF${totalNFs !== 1 ? 's' : ''} enviada${totalNFs !== 1 ? 's' : ''} com sucesso!`
+        : `✗ Ocorrência ${codigo} — erro${totalErros > 0 ? ' em ' + totalErros + ' NF(s)' : ''}`;
+      document.getElementById('response-titulo').textContent = titulo;
+      document.getElementById('response-body').textContent = JSON.stringify(resumo, null, 2);
+    } else {
+      const linhas = todosResultados.map(r =>
+        (r.sucesso ? '✓' : '✗') + ` Ocorrência ${r.codigo}: ` +
+        (r.sucesso ? `${totalNFs} NF(s) OK` : `${r.totalErros} erro(s)`)
+      );
+      document.getElementById('response-titulo').textContent =
+        tudoOk ? `✓ Todas as ocorrências enviadas com sucesso!` : `⚠ Resultado parcial — veja detalhes abaixo`;
+      document.getElementById('response-body').textContent = linhas.join('\n') +
+        '\n\n' + JSON.stringify(todosResultados.map(r => ({ oc: r.codigo, ...r.resumo })), null, 2);
+    }
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function mostrarResposta(ok, data, totalNFs, totalErros) {
+    const box = document.getElementById('response-box');
+    box.className = 'response-box ' + (ok ? 'success' : 'error');
+    box.style.display = '';
+
+    const titulo = ok
+      ? `✓ ${totalNFs} NF${totalNFs!==1?'s':''} enviada${totalNFs!==1?'s':''} com sucesso!`
+      : `✗ Erro no envio${totalErros > 0 ? ' — ' + totalErros + ' NF(s) com erro' : ''}`;
+    document.getElementById('response-titulo').textContent = titulo;
+
+    // Monta lista legível de erros
+    let erroHtml = '';
+    const resArr = Array.isArray(data?.resultados) ? data.resultados : [data];
+    resArr.forEach(r => {
+      const erros = r?.errors || r?.erros || [];
+      erros.forEach(e => {
+        const chave = e?.geolocation?.chave_nf || e?.chave_nf || '';
+        const msg   = e?.error || e?.message || JSON.stringify(e);
+        erroHtml += `\n• ${chave ? 'NF …'+chave.slice(-6)+': ' : ''}${msg}`;
+      });
+    });
+
+    const corpo = (ok || !erroHtml)
+      ? JSON.stringify(data, null, 2)
+      : `ERROS DETALHADOS:${erroHtml}\n\n─────────────────\nRESPOSTA COMPLETA:\n${JSON.stringify(data, null, 2)}`;
+
+    document.getElementById('response-body').textContent = corpo;
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---- Log ----
+  const nomeOcorrencia = { '00':'Nota em Trânsito', '52':'Redespacho', '98':'Aguardando Descarga', '01':'Entregue' };
+
+  function adicionarLog(ok, codigo, local, chaves, totalErros, resposta) {
+    const lista = document.getElementById('log-list');
+    if (lista.children.length === 1 && lista.children[0].style.color === 'rgb(170, 170, 170)')
+      lista.innerHTML = '';
+
+    const li = document.createElement('li');
+    li.className = ok ? 'ok' : 'err';
+    const agora = new Date().toLocaleString('pt-BR');
+    const nfsStr = chaves.length === 1
+      ? `NF: …${chaves[0].slice(-6)}`
+      : `${chaves.length} NFs (…${chaves[0].slice(-6)} até …${chaves[chaves.length-1].slice(-6)})`;
+
+    let erroMsg;
+    if (ok) {
+      erroMsg = '✓ Sucesso';
+    } else if (totalErros > 0) {
+      // Monta lista detalhada de cada erro retornado pela API
+      const listaErros = resultados => {
+        const erros = [];
+        (Array.isArray(resultados) ? resultados : [resultados]).forEach(r => {
+          const arr = r?.errors || r?.erros || [];
+          arr.forEach(e => {
+            const chave = e?.geolocation?.chave_nf || e?.chave_nf || '';
+            const msg   = e?.error || e?.message || JSON.stringify(e);
+            erros.push(`• ${chave ? '…'+chave.slice(-6)+': ' : ''}${msg}`);
+          });
+        });
+        return erros.length ? erros.join('<br>') : 'ver resposta acima';
+      };
+      erroMsg = `✗ ${totalErros} erro(s):<br><span style="font-size:.8rem;color:#c0390b;">${listaErros(resposta?.resultados || resposta)}</span>`;
+    } else {
+      const detalhe = resposta?.error || resposta?._raw || JSON.stringify(resposta) || 'sem detalhe';
+      const status  = resposta?._httpStatus ? ` [HTTP ${resposta._httpStatus}]` : '';
+      erroMsg = `✗ ${detalhe}${status}`;
+    }
+
+    li.innerHTML = `
+      <div class="log-time">${agora} — Oc. <strong>${codigo}</strong> – ${nomeOcorrencia[codigo]||codigo}</div>
+      <div class="log-body">📍 ${local} &nbsp;|&nbsp; ${nfsStr}<br>${erroMsg}</div>`;
+    lista.prepend(li);
+  }
+
+  function limparLog() {
+    document.getElementById('log-list').innerHTML =
+      '<li style="color:#aaa;border-left-color:#ddd;">Nenhum envio realizado ainda.</li>';
+  }
+
+  // ---- Utilitários ----
+  function setBtnLoading(btnId, spinId, loading) {
+    document.getElementById(btnId).disabled = loading;
+    document.getElementById(spinId).style.display = loading ? 'block' : 'none';
+  }
+
+  function limparFormulario() {
+    ['localizacao','latitude','longitude','placa_veiculo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('nf-list').innerHTML = '';
+    nfCount = 0;
+    adicionarNF();
+    document.querySelectorAll('.occ-pill').forEach(p => {
+      p.classList.remove('selected');
+      p.querySelector('input[type=checkbox]').checked = false;
+    });
+    ocorrenciasSelecionadas = [];
+    document.getElementById('campo-data-entrega').style.display = 'none';
+    document.getElementById('response-box').style.display = 'none';
+    const agora = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('data_geolocalizacao').value =
+      `${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+  }
+
+  // ---- CT-e XML: extrai chaves NF ----
+  function onCteDrop(event) {
+    event.preventDefault();
+    document.getElementById('cte-drop').classList.remove('drag');
+    processarCtes(event.dataTransfer.files);
+  }
+
+  async function processarCtes(files) {
+    if (!files || files.length === 0) return;
+
+    const resultado = document.getElementById('cte-result');
+    resultado.style.display = '';
+    resultado.className = 'cte-result';
+    resultado.innerHTML = `⏳ Processando ${files.length} arquivo(s)...`;
+
+    const todasChaves = [];
+    const erros = [];
+
+    for (const file of files) {
+      try {
+        const texto = await lerArquivo(file);
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(texto, 'text/xml');
+
+        // Nome do destinatário do CT-e
+        const destTag = xml.getElementsByTagName('dest')[0];
+        const destNome = destTag?.getElementsByTagName('xNome')[0]?.textContent?.trim() || '';
+
+        // Extrai todas as tags <chave> com 44 dígitos (NF-e referenciadas no CT-e)
+        const tags = xml.getElementsByTagName('chave');
+        let achouNeste = 0;
+        for (const tag of tags) {
+          const val = tag.textContent.trim().replace(/\D/g, '');
+          if (val.length === 44 && !todasChaves.includes(val)) {
+            todasChaves.push(val);
+            mapaDestinatarios[val] = destNome; // guarda destinatário
+            achouNeste++;
+          }
+        }
+
+        if (achouNeste === 0) {
+          erros.push(`${file.name}: nenhuma chave NF encontrada`);
+        }
+      } catch (e) {
+        erros.push(`${file.name}: erro ao ler (${e.message})`);
+      }
+    }
+
+    if (todasChaves.length === 0) {
+      resultado.className = 'cte-result warn';
+      resultado.innerHTML = `⚠️ Nenhuma chave NF encontrada nos arquivos.<br>` +
+        (erros.length ? `<small>${erros.join('<br>')}</small>` : '');
+      return;
+    }
+
+    // Adiciona às NFs existentes (sem duplicar)
+    const existentes = obterChavesNF();
+    let adicionadas = 0;
+    for (const chave of todasChaves) {
+      if (!existentes.includes(chave)) {
+        adicionarNF(chave);
+        adicionadas++;
+      }
+    }
+
+    const ignoradas = todasChaves.length - adicionadas;
+    resultado.className = 'cte-result';
+    resultado.innerHTML =
+      `✓ <strong>${adicionadas} chave(s)</strong> adicionada(s) de ${files.length} CT-e(s).` +
+      (ignoradas > 0 ? ` &nbsp;|&nbsp; ${ignoradas} duplicada(s) ignorada(s).` : '') +
+      (erros.length ? `<br><small style="color:#b71c1c">${erros.join('<br>')}</small>` : '');
+  }
+
+  function lerArquivo(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('falha na leitura'));
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  function mascaraCNPJ(el) {
+    let v = el.value.replace(/\D/g,'');
+    v = v.replace(/^(\d{2})(\d)/,'$1.$2');
+    v = v.replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3');
+    v = v.replace(/\.(\d{3})(\d)/,'.$1/$2');
+    v = v.replace(/(\d{4})(\d)/,'$1-$2');
+    el.value = v;
+  }
+
+  // ========== COMPROVANTE EM LOTE ==========
+
+  // Lista de NFs do Step 4: [{chave, nfNum, dest, fotoFile}]
+  let canhotosNFs = [];
+  let fotosSemMatch = [];  // fotos não identificadas
+  let fotoDragIdx   = -1; // índice da foto sendo arrastada
+
+  function nfNumDaChave(chave) {
+    return chave.length === 44 ? String(parseInt(chave.substring(25, 34), 10)) : '';
+  }
+
+  function onCteDropCanhoto(event) {
+    event.preventDefault();
+    document.getElementById('cte-drop-canhoto').classList.remove('drag');
+    processarCtesCanhoto(event.dataTransfer.files);
+  }
+
+  async function processarCtesCanhoto(files) {
+    if (!files || files.length === 0) return;
+    const resultado = document.getElementById('cte-result-canhoto');
+    resultado.style.display = '';
+    resultado.className = 'cte-result';
+    resultado.innerHTML = `⏳ Processando ${files.length} arquivo(s)...`;
+
+    const novas = [];
+    const erros = [];
+
+    for (const file of files) {
+      try {
+        const texto = await lerArquivo(file);
+        const xml = new DOMParser().parseFromString(texto, 'text/xml');
+        const destTag = xml.getElementsByTagName('dest')[0];
+        const dest = destTag?.getElementsByTagName('xNome')[0]?.textContent?.trim() || '';
+        const tags = xml.getElementsByTagName('chave');
+        let achou = 0;
+        for (const tag of tags) {
+          const val = tag.textContent.trim().replace(/\D/g, '');
+          if (val.length === 44 && !canhotosNFs.find(n => n.chave === val) && !novas.find(n => n.chave === val)) {
+            novas.push({ chave: val, nfNum: nfNumDaChave(val), dest, fotoFile: null });
+            achou++;
+          }
+        }
+        if (achou === 0) erros.push(`${file.name}: nenhuma chave encontrada`);
+      } catch(e) {
+        erros.push(`${file.name}: erro (${e.message})`);
+      }
+    }
+
+    if (novas.length === 0 && canhotosNFs.length === 0) {
+      resultado.className = 'cte-result warn';
+      resultado.innerHTML = `⚠️ Nenhuma chave encontrada.` + (erros.length ? `<br><small>${erros.join('<br>')}</small>` : '');
+      return;
+    }
+
+    canhotosNFs.push(...novas);
+    renderTabelaCanhoto();
+    document.getElementById('canhoto-tabela-wrap').style.display = '';
+    atualizarContadorCanhoto();
+
+    resultado.className = 'cte-result';
+    resultado.innerHTML =
+      `✓ <strong>${novas.length} NF(s)</strong> adicionada(s) de ${files.length} CT-e(s). Total: ${canhotosNFs.length}.` +
+      (erros.length ? `<br><small style="color:#b71c1c">${erros.join('<br>')}</small>` : '');
+  }
+
+  function renderTabelaCanhoto() {
+    const tbody = document.getElementById('canhoto-tbody');
+    tbody.innerHTML = canhotosNFs.map((nf, i) => {
+      const temFoto = !!nf.fotoFile;
+      const fotoThumb = temFoto
+        ? `<img src="${URL.createObjectURL(nf.fotoFile)}" style="max-height:48px;max-width:72px;border-radius:4px;border:1px solid #ddd;object-fit:contain;cursor:pointer;" onclick="verFoto(${i})" title="${nf.fotoFile.name}">`
+        : `<span style="color:#bbb;font-size:.78rem;">–</span>`;
+      const statusCell = temFoto
+        ? `<span style="color:#1a7a3b;font-size:1.1rem;" title="${nf.fotoFile.name}">✅</span>`
+        : `<span style="color:#bbb;">⬜</span>`;
+      return `<tr id="crow_${i}" style="border-bottom:1px solid #f0f0f0;transition:background .15s;"
+               ondragover="event.preventDefault();this.style.background='#e8f5e9';"
+               ondragleave="this.style.background='';"
+               ondrop="soltarFotoNaLinha(event,${i})">
+        <td style="padding:8px 10px;font-weight:700;color:#c0390b;">${nf.nfNum}</td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:.75rem;color:#888;">…${nf.chave.slice(-12)}</td>
+        <td style="padding:8px 10px;font-size:.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${nf.dest}">${nf.dest || '—'}</td>
+        <td style="padding:8px 10px;text-align:center;" id="cfoto_${i}">${fotoThumb}</td>
+        <td style="padding:8px 10px;text-align:center;" id="cstatus_${i}">
+          ${statusCell}
+          <div style="margin-top:4px;">
+            <label style="cursor:pointer;font-size:.7rem;color:#c0390b;text-decoration:underline;" title="Selecionar foto manualmente">
+              📎
+              <input type="file" accept="image/*" style="display:none;" onchange="manualFotoNF(this,${i})">
+            </label>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    atualizarContadorCanhoto();
+  }
+
+  function atualizarContadorCanhoto() {
+    const comFoto = canhotosNFs.filter(n => n.fotoFile).length;
+    const total   = canhotosNFs.length;
+    const el = document.getElementById('canhoto-counter');
+    if (el) el.textContent = `${comFoto} de ${total} NF(s) com foto`;
+  }
+
+  function verFoto(i) {
+    const nf = canhotosNFs[i];
+    if (!nf?.fotoFile) return;
+    abrirModalImagem(URL.createObjectURL(nf.fotoFile));
+  }
+
+  function limparCanhoto() {
+    canhotosNFs = [];
+    document.getElementById('canhoto-tbody').innerHTML = '';
+    document.getElementById('cte-result-canhoto').style.display = 'none';
+    document.getElementById('canhoto-tabela-wrap').style.display = 'none';
+    fotosSemMatch = [];
+    fotoDragIdx = -1;
+    document.getElementById('fotos-sem-match').style.display = 'none';
+    document.getElementById('fotos-sem-match-lista').innerHTML = '';
+    document.getElementById('canhoto-response-box').style.display = 'none';
+    atualizarContadorCanhoto();
+  }
+
+  function onFotosDrop(event) {
+    event.preventDefault();
+    document.getElementById('fotos-drop').style.background = '#f0faf4';
+    processarFotos(event.dataTransfer.files);
+  }
+
+  async function pdfParaImagens(file, onProgresso) {
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const imagens = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      if (onProgresso) onProgresso(p, pdf.numPages);
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 1.8 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      imagens.push(await new Promise(resolve => {
+        canvas.toBlob(blob => resolve(new File([blob], `${file.name.replace(/\.pdf$/i, '')}_p${p}.jpg`, { type: 'image/jpeg' })), 'image/jpeg', 0.88);
+      }));
+    }
+    return imagens;
+  }
+
+  async function processarFotos(files) {
+    if (!files || files.length === 0) return;
+    if (canhotosNFs.length === 0) {
+      alert('Importe os CT-e XML primeiro para montar a lista de NFs.');
+      return;
+    }
+
+    const dropEl = document.getElementById('fotos-drop');
+
+    for (const file of files) {
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        try {
+          const paginas = await pdfParaImagens(file, (p, total) => {
+            dropEl.querySelector('p').innerHTML = `<strong>📄 Convertendo PDF: página ${p}/${total}…</strong>`;
+          });
+          fotosSemMatch.push(...paginas);
+        } catch(e) {
+          alert(`Erro ao abrir o PDF ${file.name}: ${e.message}`);
+        }
+      } else {
+        fotosSemMatch.push(file);
+      }
+    }
+
+    renderSemMatch();
+    atualizarContadorCanhoto();
+    dropEl.querySelector('p').innerHTML = `<strong>Arraste mais fotos aqui</strong> ou clique para selecionar`;
+  }
+
+  function atribuirFotoNF(nfIdx, file) {
+    canhotosNFs[nfIdx].fotoFile = file;
+    const fotoTd = document.getElementById('cfoto_' + nfIdx);
+    const statusTd = document.getElementById('cstatus_' + nfIdx);
+    if (fotoTd) fotoTd.innerHTML = `<img src="${URL.createObjectURL(file)}" style="max-height:48px;max-width:72px;border-radius:4px;border:1px solid #ddd;object-fit:contain;cursor:pointer;" onclick="verFoto(${nfIdx})" title="${file.name}">`;
+    if (statusTd) statusTd.innerHTML = `<span style="color:#1a7a3b;font-size:1.1rem;" title="${file.name}">✅</span>
+      <div style="margin-top:4px;">
+        <label style="cursor:pointer;font-size:.7rem;color:#c0390b;text-decoration:underline;" title="Selecionar foto manualmente">
+          📎
+          <input type="file" accept="image/*" style="display:none;" onchange="manualFotoNF(this,${nfIdx})">
+        </label>
+      </div>`;
+    atualizarContadorCanhoto();
+  }
+
+  // Auto-scroll durante drag
+  let autoScrollInterval = null;
+
+  function iniciarAutoScroll() {
+    document.addEventListener('dragover', (e) => {
+      if (fotoDragIdx < 0) return;
+      const y = e.clientY;
+      const velocidade = 10;
+
+      // Se mouse tá perto do topo, sobe
+      if (y < 100) {
+        window.scrollBy(0, -velocidade);
+      }
+      // Se mouse tá perto do final, desce
+      else if (y > window.innerHeight - 100) {
+        window.scrollBy(0, velocidade);
+      }
+    });
+  }
+  iniciarAutoScroll();
+
+  function soltarFotoNaLinha(event, nfIdx) {
+    event.preventDefault();
+    document.getElementById('crow_' + nfIdx).style.background = '';
+    if (fotoDragIdx < 0 || fotoDragIdx >= fotosSemMatch.length) return;
+    const file = fotosSemMatch[fotoDragIdx];
+    fotosSemMatch.splice(fotoDragIdx, 1);
+    fotoDragIdx = -1;
+    atribuirFotoNF(nfIdx, file);
+    renderSemMatch();
+  }
+
+  function manualFotoNF(input, nfIdx) {
+    const file = input.files[0];
+    if (!file) return;
+    atribuirFotoNF(nfIdx, file);
+    // Se estava em sem match, remove
+    const smIdx = fotosSemMatch.findIndex(f => f === canhotosNFs[nfIdx].fotoFile);
+    if (smIdx >= 0) { fotosSemMatch.splice(smIdx, 1); renderSemMatch(); }
+  }
+
+  // ---- Modal de Imagem Ampliada ----
+  function abrirModalImagem(src) {
+    document.getElementById('modal-imagem').style.display = 'flex';
+    document.getElementById('modal-imagem-src').src = src;
+  }
+
+  function fecharModalImagem() {
+    document.getElementById('modal-imagem').style.display = 'none';
+  }
+
+  // Listener pra Esc fechar o modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') fecharModalImagem();
+  });
+
+  function renderSemMatch() {
+    const semMatchEl = document.getElementById('fotos-sem-match');
+    const semMatchLista = document.getElementById('fotos-sem-match-lista');
+    if (!semMatchEl || !semMatchLista) return;
+    if (fotosSemMatch.length === 0) { semMatchEl.style.display = 'none'; return; }
+    semMatchEl.style.display = '';
+    semMatchLista.innerHTML = '';
+    fotosSemMatch.forEach((f, i) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:inline-flex;flex-direction:column;align-items:center;gap:6px;padding:8px;';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.title = f.name + '\nArraste para a NF desejada';
+      img.draggable = true;
+      img.style.cssText = 'height:180px;width:240px;object-fit:contain;border-radius:6px;border:2px solid #f0b429;background:#fff;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+      img.ondragstart = () => { fotoDragIdx = i; };
+      img.onclick = () => abrirModalImagem(URL.createObjectURL(f));
+      const lbl = document.createElement('span');
+      lbl.style.cssText = 'font-size:.75rem;color:#555;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;';
+      lbl.textContent = f.name;
+      wrap.appendChild(img);
+      wrap.appendChild(lbl);
+      semMatchLista.appendChild(wrap);
+    });
+  }
+
+  async function enviarTodosCanhotos() {
+    if (!token) { alert('Aguarde a autenticação automática.'); return; }
+    const comFoto = canhotosNFs.filter(n => n.fotoFile);
+    if (comFoto.length === 0) { alert('Nenhuma NF com foto para enviar.'); return; }
+
+    setBtnLoading('btn-canhoto', 'spin-canhoto', true);
+
+    // Renova token
+    try {
+      const email = document.getElementById('auth-email').value.trim();
+      const senha = document.getElementById('auth-senha').value;
+      if (email && senha) {
+        const r = await fetch('https://base.iconic.webcol.systems/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: senha })
+        });
+        const d = await r.json();
+        if (d.token) token = d.token;
+      }
+    } catch(e) {}
+
+    const prog = document.getElementById('canhoto-progresso');
+    prog.style.display = '';
+    prog.innerHTML = `<p style="font-size:.83rem;color:#888;">Enviando 0 de ${comFoto.length}…</p>`;
+
+    let enviados = 0, erros = 0;
+    const detalhes = [];
+
+    for (let i = 0; i < canhotosNFs.length; i++) {
+      const nf = canhotosNFs[i];
+      if (!nf.fotoFile) continue;
+      const statusTd = document.getElementById('cstatus_' + i);
+      if (statusTd) statusTd.innerHTML = '<span>⏳</span>';
+      try {
+        const fd = new FormData();
+        fd.append('chave_nf', nf.chave);
+        fd.append('image', nf.fotoFile, nf.fotoFile.name);
+        const res = await fetch('https://geolocation.iconic.webcol.systems/upload-canhoto', {
+          method: 'POST',
+          headers: { 'Authorization':'Bearer '+token },
+          body: fd
+        });
+        await new Promise(r => setTimeout(r, 300));
+        if (res.ok) {
+          if (statusTd) statusTd.innerHTML = '<span title="Enviado!">✅</span>';
+          enviados++;
+          detalhes.push({ nf: nf.nfNum, status: 'OK' });
+        } else {
+          const txt = await res.text();
+          if (statusTd) statusTd.innerHTML = '<span title="Erro">❌</span>';
+          erros++;
+          detalhes.push({ nf: nf.nfNum, status: 'Erro HTTP '+res.status, detalhe: txt.slice(0,120) });
+        }
+      } catch(e) {
+        if (statusTd) statusTd.innerHTML = '<span title="Erro">❌</span>';
+        erros++;
+        detalhes.push({ nf: nf.nfNum, status: 'Erro', detalhe: e.message });
+      }
+      prog.innerHTML = `<p style="font-size:.83rem;color:#888;">Enviando ${enviados+erros} de ${comFoto.length}…</p>`;
+    }
+
+    prog.style.display = 'none';
+    const box = document.getElementById('canhoto-response-box');
+    box.className = 'response-box ' + (erros === 0 ? 'success' : 'error');
+    box.style.display = '';
+    document.getElementById('canhoto-response-titulo').textContent =
+      erros === 0 ? `✓ ${enviados} comprovante(s) enviados com sucesso!` : `⚠ ${enviados} enviado(s) / ${erros} com erro`;
+    document.getElementById('canhoto-response-body').textContent =
+      detalhes.map(d => `${d.status==='OK'?'✓':'✗'} NF ${d.nf}: ${d.status}${d.detalhe?' — '+d.detalhe:''}${d.url?'\n  URL: '+d.url:''}`).join('\n');
+    box.scrollIntoView({ behavior:'smooth', block:'start' });
+    setBtnLoading('btn-canhoto', 'spin-canhoto', false);
+  }
+
+  function mostrarNumeroNF(input, spanId) {
+    const chave = input.value;
+    const span = document.getElementById(spanId);
+    if (!span) return;
+    if (chave.length === 44) {
+      span.textContent = 'NF ' + nfNumDaChave(chave);
+      span.style.display = '';
+    } else {
+      span.style.display = 'none';
+    }
+  }
+
+  // ========== ABAS ==========
+  function mudarAba(aba) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + aba).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      if (b.getAttribute('onclick').includes("'" + aba + "'")) b.classList.add('active');
+    });
+    if (aba === 'historico') renderTabela();
+  }
+
+  // ========== HISTÓRICO PERSISTENTE ==========
+  const HIST_KEY = 'webcol_historico';
+
+  function carregarHistorico() {
+    try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function salvarHistorico(lista) {
+    localStorage.setItem(HIST_KEY, JSON.stringify(lista));
+  }
+
+  function gravarEnvio(ok, codigo, localizacao, chaves, totalErros, resposta) {
+    const hist = carregarHistorico();
+    const agora = new Date().toISOString();
+    chaves.forEach(chave => {
+      const erroDetalhe = (() => {
+        const arr = [];
+        (Array.isArray(resposta?.resultados) ? resposta.resultados : [resposta]).forEach(r => {
+          (r?.errors || r?.erros || []).forEach(e => {
+            if ((e?.geolocation?.chave_nf || e?.chave_nf || '').endsWith(chave.slice(-6)) || chaves.length === 1)
+              arr.push(e?.error || e?.message || '');
+          });
+        });
+        return arr.join('; ');
+      })();
+
+      hist.unshift({
+        dt: agora,
+        ocorrencia: codigo,
+        chave_nf: chave,
+        placa: document.getElementById('placa_veiculo').value.trim(),
+        local: localizacao,
+        ok: ok && !erroDetalhe,
+        erro: erroDetalhe
+      });
+    });
+    // Limita a 2000 registros
+    salvarHistorico(hist.slice(0, 2000));
+  }
+
+  const nomeOcc = { '0':'00 – Trânsito', '52':'52 – Redespacho', '98':'98 – Ag. Descarga', '1':'01 – Entregue' };
+
+  function renderTabela() {
+    const busca  = (document.getElementById('hist-busca')?.value || '').toLowerCase();
+    const filtOc = document.getElementById('hist-occ')?.value || '';
+    const filtSt = document.getElementById('hist-status')?.value || '';
+
+    const hist = carregarHistorico();
+    const tbody = document.getElementById('hist-tbody');
+    const empty = document.getElementById('hist-empty');
+    const count = document.getElementById('hist-count');
+
+    // Agrupa por chave_nf — uma linha por NF
+    const mapa = {};
+    hist.forEach(r => {
+      const k = r.chave_nf;
+      if (!mapa[k]) mapa[k] = { chave_nf: k, placa: r.placa, local: r.local, occ: {} };
+      const oc = String(r.ocorrencia);
+      // Guarda o mais recente por ocorrência
+      if (!mapa[k].occ[oc] || r.dt > mapa[k].occ[oc].dt) {
+        mapa[k].occ[oc] = { dt: r.dt, ok: r.ok, erro: r.erro };
+        mapa[k].local = r.local; // atualiza com o mais recente
+        mapa[k].placa = r.placa;
+      }
+    });
+
+    // Filtra
+    let linhas = Object.values(mapa).filter(row => {
+      if (filtOc && !row.occ[filtOc]) return false;
+      if (filtSt === 'ok'   && !Object.values(row.occ).some(o => o.ok))  return false;
+      if (filtSt === 'erro' && !Object.values(row.occ).some(o => !o.ok)) return false;
+      if (busca && ![row.chave_nf, row.placa, row.local].join(' ').toLowerCase().includes(busca)) return false;
+      return true;
+    });
+
+    // Ordena pela ocorrência mais recente
+    linhas.sort((a, b) => {
+      const dtA = Math.max(...Object.values(a.occ).map(o => new Date(o.dt)));
+      const dtB = Math.max(...Object.values(b.occ).map(o => new Date(o.dt)));
+      return dtB - dtA;
+    });
+
+    if (!linhas.length) {
+      tbody.innerHTML = '';
+      empty.style.display = '';
+      count.textContent = '';
+      return;
+    }
+    empty.style.display = 'none';
+    count.textContent = `${linhas.length} NF(s) encontrada(s)`;
+
+    const ocCols = ['0', '52', '98', '1']; // 0 = código 00, 1 = código 01
+
+    tbody.innerHTML = linhas.map(row => {
+      const nf = row.chave_nf ? `<span title="${row.chave_nf}" style="font-family:monospace;font-size:.78rem;">…${row.chave_nf.slice(-12)}</span>` : '—';
+
+      const celulas = ocCols.map(oc => {
+        const reg = row.occ[oc];
+        if (!reg) return `<td style="text-align:center;color:#ddd;">—</td>`;
+        const dt = new Date(reg.dt).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+        if (reg.ok) {
+          return `<td style="text-align:center;">
+            <span style="color:#1a7a3b;font-size:.75rem;font-weight:600;">✓</span><br>
+            <span style="font-size:.72rem;color:#555;">${dt}</span>
+          </td>`;
+        } else {
+          return `<td style="text-align:center;" title="${reg.erro || 'erro'}">
+            <span style="color:#c0390b;font-size:.75rem;font-weight:600;">✗</span><br>
+            <span style="font-size:.72rem;color:#c0390b;">${dt}</span>
+          </td>`;
+        }
+      });
+
+      return `<tr>
+        <td>${nf}</td>
+        <td>${row.placa || '—'}</td>
+        ${celulas.join('')}
+        <td style="font-size:.8rem;">${row.local || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function limparHistorico() {
+    if (!confirm('Apagar todo o histórico permanentemente?')) return;
+    localStorage.removeItem(HIST_KEY);
+    renderTabela();
+  }
+
+  function exportarCSV() {
+    const hist = carregarHistorico();
+    if (!hist.length) { alert('Nenhum registro para exportar.'); return; }
+    const cab = 'Data/Hora,Ocorrencia,Chave NF,Placa,Localizacao,Status,Detalhe';
+    const linhas = hist.map(r => [
+      new Date(r.dt).toLocaleString('pt-BR'),
+      r.ocorrencia, r.chave_nf, r.placa, r.local,
+      r.ok ? 'Sucesso' : 'Erro', r.erro || ''
+    ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
+    const blob = new Blob([cab + '\n' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `webcol_historico_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+</script>
+</body>
+</html>
